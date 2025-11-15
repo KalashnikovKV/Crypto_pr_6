@@ -75,7 +75,6 @@ describe("MyToken", function () {
     const myToken = await ethers.deployContract("MyToken", [initialSupply]);
     await myToken.waitForDeployment();
 
-    // Попытка минтинга от не-владельца должна быть отклонена
     await expect(
       (myToken.connect(nonOwner) as any).mint(nonOwner.address, mintAmount)
     ).to.be.revertedWithCustomError(myToken, "OwnableUnauthorizedAccount");
@@ -84,12 +83,11 @@ describe("MyToken", function () {
   it("Should revert when transferring more tokens than available balance", async function () {
     const [deployer, recipient] = await ethers.getSigners();
     const initialSupply = ethers.parseEther("1000000");
-    const excessiveAmount = ethers.parseEther("2000000"); // Больше, чем есть на балансе
+    const excessiveAmount = ethers.parseEther("2000000");
 
     const myToken = await ethers.deployContract("MyToken", [initialSupply]);
     await myToken.waitForDeployment();
 
-    // Попытка перевода большего количества, чем доступно, должна быть отклонена
     await expect(
       myToken.transfer(recipient.address, excessiveAmount)
     ).to.be.revertedWithCustomError(myToken, "ERC20InsufficientBalance");
@@ -103,7 +101,6 @@ describe("MyToken", function () {
     const myToken = await ethers.deployContract("MyToken", [initialSupply]);
     await myToken.waitForDeployment();
 
-    // Попытка перевода от аккаунта без токенов должна быть отклонена
     await expect(
       (myToken.connect(thirdParty) as any).transfer(recipient.address, transferAmount)
     ).to.be.revertedWithCustomError(myToken, "ERC20InsufficientBalance");
@@ -116,14 +113,12 @@ describe("MyToken", function () {
     const myToken = await ethers.deployContract("MyToken", [initialSupply]);
     await myToken.waitForDeployment();
 
-    // Перевод нулевого количества должен пройти успешно
     const tx = await myToken.transfer(recipient.address, 0n);
     await tx.wait();
 
     const recipientBalance = await myToken.balanceOf(recipient.address);
     expect(recipientBalance).to.equal(0n);
     
-    // Баланс отправителя не должен измениться
     const deployerBalance = await myToken.balanceOf(deployer.address);
     expect(deployerBalance).to.equal(initialSupply);
   });

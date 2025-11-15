@@ -1,7 +1,6 @@
 import { network } from "hardhat";
 
 async function main() {
-  // Используем встроенную симулированную сеть Hardhat
   const { ethers } = await network.connect({
     network: "hardhatMainnet",
     chainType: "l1",

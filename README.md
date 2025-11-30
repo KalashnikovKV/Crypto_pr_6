@@ -1,23 +1,69 @@
-# Sample Hardhat 3 Beta Project (`mocha` and `ethers`)
+# Upgradeable ERC20 Token Project
 
-This project showcases a Hardhat 3 Beta project using `mocha` for tests and the `ethers` library for Ethereum interactions.
-
-To learn more about the Hardhat 3 Beta, please visit the [Getting Started guide](https://hardhat.org/docs/getting-started#getting-started-with-hardhat-3). To share your feedback, join our [Hardhat 3 Beta](https://hardhat.org/hardhat3-beta-telegram-group) Telegram group or [open an issue](https://github.com/NomicFoundation/hardhat/issues/new) in our GitHub issue tracker.
+This project demonstrates an upgradeable ERC20 token implementation using the UUPS (Universal Upgradeable Proxy Standard) pattern from OpenZeppelin.
 
 ## Project Overview
 
-This example project includes:
+This project includes:
 
-- A simple Hardhat configuration file.
-- Foundry-compatible Solidity unit tests.
+- **MyToken.sol**: Original ERC20 token from previous assignment (non-upgradeable)
+- **MyTokenV1.sol**: Upgradeable version of MyToken.sol using UUPS pattern
+- **MyTokenV2.sol**: Upgraded version with additional `version()` function
+- **MyTokenProxy.sol**: Wrapper for ERC1967Proxy for delegating calls to implementation contracts
+- Deployment scripts with automatic testing and upgrade validation
 - TypeScript integration tests using `mocha` and ethers.js
-- Examples demonstrating how to connect to different types of networks, including locally simulating OP mainnet.
+
+## Architecture
+
+### UUPS Proxy Pattern
+
+The project uses the **UUPS (Universal Upgradeable Proxy Standard)** pattern:
+
+1. **MyToken.sol**: Original non-upgradeable ERC20 token (from previous assignment)
+2. **MyTokenV1.sol**: Upgradeable version of MyToken.sol - contains the actual business logic
+3. **MyTokenV2.sol**: Upgraded version with new `version()` function
+4. **Proxy Contract** (ERC1967Proxy): Stores state and delegates calls to implementation
+5. **Upgrade Mechanism**: Owner can upgrade the proxy to point to a new implementation
+
+### Key Features
+
+- ✅ Token balances preserved after upgrade
+- ✅ Storage layout compatibility between V1 and V2
+- ✅ Only owner can upgrade (via `_authorizeUpgrade`)
+- ✅ New functionality added in V2 (`version()` function)
 
 ## Usage
 
+### Compile Contracts
+
+```shell
+npx hardhat compile
+```
+
+### Deploy Upgradeable Token
+
+The deployment script automatically:
+1. Deploys MyTokenV1 implementation (upgradeable version of MyToken.sol)
+2. Deploys ERC1967Proxy pointing to V1
+3. Initializes the proxy with 1,000,000 tokens
+4. Tests minting and transfers
+5. Deploys MyTokenV2 implementation
+6. Upgrades proxy to V2
+7. Verifies balances and version function
+
+**Deploy to local Hardhat network:**
+```shell
+npx hardhat run scripts/deploy-upgradeable.ts
+```
+
+**Deploy to Sepolia testnet:**
+```shell
+npx hardhat run scripts/deploy-upgradeable.ts --network sepolia
+```
+
 ### Running Tests
 
-To run all the tests in the project, execute the following command:
+To run all the tests in the project:
 
 ```shell
 npx hardhat test
@@ -30,28 +76,51 @@ npx hardhat test solidity
 npx hardhat test mocha
 ```
 
-### Make a deployment to Sepolia
+## Contract Details
 
-This project includes an example Ignition module to deploy the contract. You can deploy this module to a locally simulated chain or to Sepolia.
+### MyToken.sol (Original)
+- **Name**: MyToken
+- **Symbol**: MTK
+- **Type**: Non-upgradeable ERC20 token
+- **Functions**: 
+  - `mint(address to, uint256 amount)` - Owner only
+  - Standard ERC20 functions
 
-To run the deployment to a local chain:
+### MyTokenV1.sol (Upgradeable Version)
+- **Based on**: MyToken.sol from previous assignment
+- **Name**: MyToken
+- **Symbol**: MTK
+- **Initial Supply**: 1,000,000 MTK (configurable)
+- **Functions**: 
+  - `mint(address to, uint256 amount)` - Owner only
+  - Standard ERC20 functions
+- **Upgrade Pattern**: UUPS (Universal Upgradeable Proxy Standard)
 
-```shell
-npx hardhat ignition deploy ignition/modules/Counter.ts
-```
+### MyTokenV2.sol (Upgraded Version)
+- **Inherits from**: MyTokenV1.sol
+- Inherits all V1 functionality
+- **New Function**: `version() returns (string)` - Returns "V2"
+- Maintains storage layout compatibility with V1
 
-To run the deployment to Sepolia, you need an account with funds to send the transaction. The provided Hardhat configuration includes a Configuration Variable called `SEPOLIA_PRIVATE_KEY`, which you can use to set the private key of the account you want to use.
+### MyTokenProxy.sol (Proxy Contract)
+- **Type**: ERC1967Proxy wrapper (UUPS pattern)
+- **Purpose**: Stores state and delegates calls to implementation contracts
+- **Upgrade Authorization**: Only owner can upgrade
+- **State Storage**: All token balances stored in proxy storage
 
-You can set the `SEPOLIA_PRIVATE_KEY` variable using the `hardhat-keystore` plugin or by setting it as an environment variable.
+## Deployment Steps Explained
 
-To set the `SEPOLIA_PRIVATE_KEY` config variable using `hardhat-keystore`:
+1. **Deploy MyTokenV1 Implementation**: Deploy the upgradeable version of MyToken.sol (logic only, no state)
+2. **Deploy Proxy**: Deploy ERC1967Proxy with MyTokenV1 address and initialization data
+3. **Initialize**: Proxy calls `initialize()` on MyTokenV1, setting up token name, symbol, and initial supply
+4. **Interact**: Use proxy address to mint and transfer tokens (same as original MyToken.sol)
+5. **Deploy MyTokenV2 Implementation**: Deploy MyTokenV2 contract (logic only) with new `version()` function
+6. **Upgrade**: Call `upgradeTo(v2Address)` on proxy to switch implementation
+7. **Verify**: Check that balances are preserved and `version()` returns "V2"
 
-```shell
-npx hardhat keystore set SEPOLIA_PRIVATE_KEY
-```
+## Important Notes
 
-After setting the variable, you can run the deployment with the Sepolia network:
-
-```shell
-npx hardhat ignition deploy --network sepolia ignition/modules/Counter.ts
-```
+- ⚠️ **Storage Layout**: V2 must maintain the same storage layout as V1 to preserve state
+- ⚠️ **Initialization**: Implementation contracts use `initializer` instead of `constructor`
+- ⚠️ **Upgrade Authorization**: Only the owner can call `upgradeTo()`
+- ⚠️ **Proxy Address**: Always interact with the proxy address, not the implementation address

@@ -23,7 +23,8 @@
   "homepage": "https://github.com/KalashnikovKV/Crypto_pr_6#readme",
   "description": "",
   "dependencies": {
-    "@openzeppelin/contracts": "^5.4.0"
+    "@openzeppelin/contracts": "^5.4.0",
+    "@openzeppelin/contracts-upgradeable": "^5.4.0"
   },
   "type": "module",
   "devDependencies": {
